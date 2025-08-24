@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: LINE bot Ronna on AWS Lambda (Function URL)
+
+Resources:
+  RonnaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          LINE_TOKEN_PARAM:  /ronna/line_token
+          LINE_SECRET_PARAM: /ronna/line_secret
+          OPENAI_PARAM:      /ronna/openai_key
+          TRIGGER_WORDS:     "@スパイシーババア,スパイシーババア,ババア"
+          SYSTEM_PROMPT_FILE:  "systemprompt.txt"
+          REQUIRE_MENTION_IN_DM: "false"  # DMでもメンション必須にしたいなら "true"
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action: ssm:GetParameter
+            Resource: arn:aws:ssm:ap-northeast-1:590184010523:parameter/ronna/*
+        - Statement:
+            Effect: Allow
+            Action: kms:Decrypt
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:ViaService: ssm.ap-northeast-1.amazonaws.com
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowMethods: [POST]
+          AllowOrigins: ["*"]
+          AllowHeaders: ["Content-Type","X-Line-Signature"]
+
+Outputs:
+  FunctionUrl:
+    Description: Public HTTPS endpoint — set this to LINE Webhook URL
+    Value: !GetAtt RonnaFunctionUrl.FunctionUrl
